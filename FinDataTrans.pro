@@ -13,9 +13,11 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        datatransfer.cpp
+        datatransfer.cpp\
+        mymodel.cpp
 
-HEADERS  += datatransfer.h
+HEADERS  += datatransfer.h\
+            mymodel.h
 
 FORMS    += datatransfer.ui
 
