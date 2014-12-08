@@ -19,20 +19,33 @@ DataTrans::DataTrans(QWidget *parent) :
     ui->setupUi(this);
 
     progressBar = new QProgressBar(this);
-    progressBar->setValue(45);
     completed = new QLabel("completed");
-    ui->statusBar->addPermanentWidget(progressBar, 1);
-    ui->statusBar->addPermanentWidget(completed);
+    tableView = new QTableView();
     proxy = new QSortFilterProxyModel(this);
 
-    connectSQLitePolo();
-    connectSQLiteFinTrans();
-    select_dbTableNames();
+    progressBar->setValue(0);
+
+    ui->statusBar->addPermanentWidget(progressBar, 1);
+    ui->statusBar->addPermanentWidget(completed);
+
+    //connectSQLitePolo();
+    //connectSQLiteFinTrans();
+    //select_dbTableNames();
 }
 
 DataTrans::~DataTrans()
 {
     delete ui;
+}
+
+QString DataTrans::chooseSourceDB()
+{
+    return sourceDBFile;
+}
+
+QString DataTrans::chooseTargetDB()
+{
+    return targetDBFile;
 }
 
 bool DataTrans::connectSQLitePolo()
@@ -44,10 +57,10 @@ bool DataTrans::connectSQLitePolo()
     pDBPolo = createSQLDatabase(db::ISQLDatabase::DB_SQLITE, db::ISQLDatabase::SER_SQLITE3);
 
     //QString file = QFileDialog::getOpenFileName(this,"Open a database");
-    //if(!file.isEmpty())
+    if(!chooseSourceDB().isEmpty())
 
-    //if (!pDB->connect(file.toUtf8().constData()))
-    if (!pDBPolo->connect("C:/dbFiles/Polo.db"))
+    if (!pDBPolo->connect(chooseSourceDB().toUtf8().constData()))
+    //if (!pDBPolo->connect("C:/dbFiles/Polo.db"))
     {
         std::cout << "Cannot connect to database" << std::endl;
         td::String err;
@@ -71,10 +84,10 @@ bool DataTrans::connectSQLiteFinTrans()
     pDBFinTrans = createSQLDatabase(db::ISQLDatabase::DB_SQLITE, db::ISQLDatabase::SER_SQLITE3);
 
     //QString file = QFileDialog::getOpenFileName(this,"Open a database");
-    //if(!file.isEmpty())
+    if(!chooseTargetDB().isEmpty())
 
-    //if (!pDB->connect(file.toUtf8().constData()))
-    if (!pDBFinTrans->connect("C:/dbFiles/FinTrans.db"))
+    if (!pDBFinTrans->connect(chooseTargetDB().toUtf8().constData()))
+    //if (!pDBFinTrans->connect("C:/dbFiles/FinTrans.db"))
     {
         std::cout << "Cannot connect to database" << std::endl;
         td::String err;
@@ -124,6 +137,7 @@ bool DataTrans::select_dbTableNames()
     MyModel *model = new MyModel(this, rs, false);
 
     setModel(model);
+    setCheckBoxes();
 
     return true;
 }
@@ -134,38 +148,70 @@ void DataTrans::setModel(MyModel *model)
     proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
     proxy->setFilterKeyColumn(0);
 
-    ui->tableNamesTableView->setModel(proxy);
-    ui->tableNamesTableView->resizeRowsToContents();
-    ui->tableNamesTableView->horizontalHeader()->setStretchLastSection(true);
+    tableView->setModel(proxy);
+    tableView->resizeRowsToContents();
+    tableView->horizontalHeader()->setStretchLastSection(true);
 
-    /*for(int p = 0; p < model->rowCount(); p++)
+    for(int i = 0; i < tableView->model()->rowCount(); i++)
     {
-        ui->tableView->setIndexWidget(model->index(p, 0),new QCheckBox());
-    }*/
+        ui->listWidget->addItem(tableView->model()->data(tableView->model()->index(i, 0)).toString());
+    }
+}
+
+void DataTrans::setCheckBoxes()
+{
+    for(int i=0;i<ui->listWidget->count();i++)
+    {
+            ui->listWidget->item(i)->setFlags(ui->listWidget->item(i)->flags() |Qt::ItemIsUserCheckable);
+            ui->listWidget->item(i)->setCheckState(Qt::Unchecked);
+    }
 }
 
 void DataTrans::on_filterLineEdit_textChanged(const QString &arg1)
 {
     proxy->setFilterFixedString(arg1);
+
+    ui->listWidget->clear();
+
+    for(int i = 0; i < tableView->model()->rowCount(); i++)
+    {
+        ui->listWidget->addItem(tableView->model()->data(tableView->model()->index(i, 0)).toString());
+    }
+
+    setCheckBoxes();
 }
 
 void DataTrans::on_selectAllCheckBox_clicked(bool checked)
 {
     if(checked == true)
     {
-         for(int i = 0; i < ui->tableNamesTableView->model()->rowCount(); i++)
-         {
-             QModelIndex index = ui->tableNamesTableView->model()->index(i, 0);
-             ui->tableNamesTableView->selectionModel()->select(index, QItemSelectionModel::Select);
-         }
+        for(int i=0;i<ui->listWidget->count();i++)
+        {
+                ui->listWidget->item(i)->setCheckState(Qt::Checked);
+        }
     }
 
     else
     {
-        for(int i = 0; i < ui->tableNamesTableView->model()->rowCount(); i++)
+        for(int i=0;i<ui->listWidget->count();i++)
         {
-            QModelIndex index = ui->tableNamesTableView->model()->index(i, 0);
-            ui->tableNamesTableView->selectionModel()->select(index, QItemSelectionModel::Deselect);
+                ui->listWidget->item(i)->setCheckState(Qt::Unchecked);
         }
     }
+}
+
+
+void DataTrans::on_browseSourcePushButton_clicked()
+{
+     sourceDBFile = QFileDialog::getOpenFileName(this,"Choose source database");
+     ui->label->setText("Source Database: Polo.db");
+     connectSQLitePolo();
+     select_dbTableNames();
+}
+
+void DataTrans::on_browseTargetPushButton_clicked()
+{
+    targetDBFile = QFileDialog::getOpenFileName(this,"Choose target database");
+    ui->label_2->setText("Target Database: FinTrans.db");
+    connectSQLiteFinTrans();
 }
